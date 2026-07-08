@@ -1,27 +1,24 @@
 {
   "schemaVersion": 1,
-  "id": "addon-template",
+  "id": "toolpro",
   "version": "${version}",
-  "name": "Addon Template",
-  "description": "An addon template for Meteor Client addons.",
+  "name": "ToolPRO",
+  "description": "A Meteor Client addon for crystal PvP: Auto D-Tap, configurable pearl mechanics, a Pearl Anchor module and an enhanced Auto Totem.",
   "authors": [
-    "seasnail"
+    "Fish-A-Man"
   ],
   "contact": {
-    "sources": "https://github.com/MeteorDevelopment/meteor-addon-template"
+    "sources": "https://github.com/sam65578578578/ToolPRO"
   },
-  "icon": "assets/template/icon.png",
+  "icon": "assets/toolpro/icon.png",
   "environment": "client",
   "entrypoints": {
     "meteor": [
-      "com.example.addon.AddonTemplate"
+      "com.toolpro.ToolPro"
     ]
   },
-  "mixins": [
-    "addon-template.mixins.json"
-  ],
   "custom": {
-    "meteor-client:color": "225,25,25",
+    "meteor-client:color": "170,80,255",
     "modmenu": {
       "parent": {
         "id": "meteor-client"
@@ -29,8 +26,8 @@
     }
   },
   "depends": {
-    "java": ">=${jdk_version}",
-    "minecraft": "${minecraft_version}",
+    "java": ">=21",
+    "minecraft": ["${mc_version}"],
     "meteor-client": "*"
   }
 }
