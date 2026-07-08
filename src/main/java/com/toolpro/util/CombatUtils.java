@@ -1,16 +1,14 @@
 package com.toolpro.util;
 
-import net.minecraft.block.Blocks;
-import net.minecraft.entity.Entity;
-import net.minecraft.network.packet.c2s.play.HandSwingC2SPacket;
-import net.minecraft.network.packet.c2s.play.PlayerInteractBlockC2SPacket;
-import net.minecraft.network.packet.c2s.play.PlayerInteractEntityC2SPacket;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.Hand;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.network.protocol.game.ServerboundAttackPacket;
+import net.minecraft.network.protocol.game.ServerboundSwingPacket;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
 
 import static meteordevelopment.meteorclient.MeteorClient.mc;
 
@@ -27,45 +25,46 @@ public final class CombatUtils {
      * @return {@code true} if the block can act as a base for an end crystal (obsidian or bedrock).
      */
     public static boolean isCrystalBase(BlockPos pos) {
-        if (mc.world == null) return false;
-        return mc.world.getBlockState(pos).isOf(Blocks.OBSIDIAN) || mc.world.getBlockState(pos).isOf(Blocks.BEDROCK);
+        if (mc.level == null) return false;
+        var block = mc.level.getBlockState(pos).getBlock();
+        return block == Blocks.OBSIDIAN || block == Blocks.BEDROCK;
     }
 
     /**
      * Sends an attack (left click) on the given entity followed by a hand swing.
      */
-    public static void attackEntity(Entity entity, Hand hand, boolean swing) {
-        if (mc.getNetworkHandler() == null || mc.player == null) return;
+    public static void attackEntity(Entity entity, InteractionHand hand, boolean swing) {
+        if (mc.getConnection() == null || mc.player == null) return;
 
-        mc.getNetworkHandler().sendPacket(PlayerInteractEntityC2SPacket.attack(entity, mc.player.isSneaking()));
+        mc.getConnection().send(new ServerboundAttackPacket(entity.getId()));
         if (swing) swing(hand);
     }
 
     /**
-     * Places an end crystal on top of the given base block by sending a block interaction packet.
+     * Places an end crystal on top of the given base block by interacting with its upper face.
      * The crystal must already be selected in the provided hand.
      */
-    public static void placeCrystal(BlockPos base, Hand hand, boolean swing) {
-        if (mc.getNetworkHandler() == null || mc.player == null) return;
+    public static void placeCrystal(BlockPos base, InteractionHand hand, boolean swing) {
+        if (mc.gameMode == null || mc.player == null) return;
 
-        Vec3d hitVec = new Vec3d(base.getX() + 0.5, base.getY() + 1.0, base.getZ() + 0.5);
+        Vec3 hitVec = new Vec3(base.getX() + 0.5, base.getY() + 1.0, base.getZ() + 0.5);
         BlockHitResult hitResult = new BlockHitResult(hitVec, Direction.UP, base, false);
 
-        mc.getNetworkHandler().sendPacket(new PlayerInteractBlockC2SPacket(hand, hitResult, 0));
+        mc.gameMode.useItemOn(mc.player, hand, hitResult);
         if (swing) swing(hand);
     }
 
     /**
      * Uses (throws) the item currently held in the given hand. Used for ender pearls.
      */
-    public static ActionResult useItem(Hand hand) {
-        if (mc.interactionManager == null || mc.player == null) return ActionResult.PASS;
-        return mc.interactionManager.interactItem(mc.player, hand);
+    public static void useItem(InteractionHand hand) {
+        if (mc.gameMode == null || mc.player == null) return;
+        mc.gameMode.useItem(mc.player, hand);
     }
 
-    public static void swing(Hand hand) {
-        if (mc.player == null || mc.getNetworkHandler() == null) return;
-        mc.player.swingHand(hand);
-        mc.getNetworkHandler().sendPacket(new HandSwingC2SPacket(hand));
+    public static void swing(InteractionHand hand) {
+        if (mc.player == null || mc.getConnection() == null) return;
+        mc.player.swing(hand);
+        mc.getConnection().send(new ServerboundSwingPacket(hand));
     }
 }

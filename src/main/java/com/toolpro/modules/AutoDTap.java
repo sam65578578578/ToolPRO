@@ -19,13 +19,13 @@ import meteordevelopment.meteorclient.utils.player.PlayerUtils;
 import meteordevelopment.meteorclient.utils.player.Rotations;
 import meteordevelopment.orbit.EventHandler;
 import meteordevelopment.orbit.EventPriority;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.decoration.EndCrystalEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.Items;
-import net.minecraft.util.Hand;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Automatically performs a "D-Tap" sequence on a nearby opponent: it hits the target to launch
@@ -192,17 +192,17 @@ public class AutoDTap extends Module {
 
     @EventHandler(priority = EventPriority.HIGH)
     private void onTick(TickEvent.Pre event) {
-        if (mc.player == null || mc.world == null) return;
+        if (mc.player == null || mc.level == null) return;
 
         if (hitTimer > 0) hitTimer--;
         if (placeTimer > 0) placeTimer--;
         if (pearlTimer > 0) pearlTimer--;
         if (breakTimer > 0) breakTimer--;
 
-        PlayerEntity target = TargetUtils.getPlayerTarget(targetRange.get(), priority.get());
+        Player target = TargetUtils.getPlayerTarget(targetRange.get(), priority.get());
         if (target == null) return;
 
-        boolean airborne = !target.isOnGround();
+        boolean airborne = !target.onGround();
 
         // Launch the target by attacking it.
         if (hitTimer <= 0 && PlayerUtils.isWithinReach(target)) {
@@ -227,9 +227,9 @@ public class AutoDTap extends Module {
     }
 
     private void attack(Entity target) {
-        Hand hand = InvUtils.findInHotbar(Items.END_CRYSTAL).getHand();
-        if (hand == null) hand = Hand.MAIN_HAND;
-        Hand finalHand = hand;
+        InteractionHand hand = InvUtils.findInHotbar(Items.END_CRYSTAL).getHand();
+        if (hand == null) hand = InteractionHand.MAIN_HAND;
+        InteractionHand finalHand = hand;
 
         if (rotate.get()) {
             Rotations.rotate(Rotations.getYaw(target), Rotations.getPitch(target), 50, () -> CombatUtils.attackEntity(target, finalHand, swing.get()));
@@ -238,21 +238,21 @@ public class AutoDTap extends Module {
         }
     }
 
-    private boolean throwPearlAt(PlayerEntity target) {
+    private boolean throwPearlAt(Player target) {
         FindItemResult pearl = InvUtils.findInHotbar(Items.ENDER_PEARL);
         if (!pearl.found()) return false;
 
-        Vec3d aim = target.getPos().add(0, target.getStandingEyeHeight(), 0);
+        Vec3 aim = target.position().add(0, target.getEyeHeight(), 0);
         Runnable action = () -> {
-            int prev = mc.player.getInventory().selectedSlot;
+            int prev = mc.player.getInventory().getSelectedSlot();
             boolean swapped = false;
 
-            Hand hand;
-            if (pearl.isOffhand()) hand = Hand.OFF_HAND;
+            InteractionHand hand;
+            if (pearl.isOffhand()) hand = InteractionHand.OFF_HAND;
             else {
                 InvUtils.swap(pearl.slot(), false);
                 swapped = true;
-                hand = Hand.MAIN_HAND;
+                hand = InteractionHand.MAIN_HAND;
             }
 
             CombatUtils.useItem(hand);
@@ -267,26 +267,26 @@ public class AutoDTap extends Module {
         return true;
     }
 
-    private boolean placeBestCrystal(PlayerEntity target) {
+    private boolean placeBestCrystal(Player target) {
         FindItemResult crystal = InvUtils.findInHotbar(Items.END_CRYSTAL);
         if (!crystal.found()) return false;
 
         BlockPos base = findBestBase(target);
         if (base == null) return false;
 
-        Vec3d crystalTop = new Vec3d(base.getX() + 0.5, base.getY() + 1.0, base.getZ() + 0.5);
+        Vec3 crystalTop = new Vec3(base.getX() + 0.5, base.getY() + 1.0, base.getZ() + 0.5);
         BlockPos finalBase = base;
 
         Runnable action = () -> {
-            int prev = mc.player.getInventory().selectedSlot;
+            int prev = mc.player.getInventory().getSelectedSlot();
             boolean swapped = false;
 
-            Hand hand;
-            if (crystal.isOffhand()) hand = Hand.OFF_HAND;
+            InteractionHand hand;
+            if (crystal.isOffhand()) hand = InteractionHand.OFF_HAND;
             else {
                 InvUtils.swap(crystal.slot(), false);
                 swapped = true;
-                hand = Hand.MAIN_HAND;
+                hand = InteractionHand.MAIN_HAND;
             }
 
             CombatUtils.placeCrystal(finalBase, hand, swing.get());
@@ -300,14 +300,14 @@ public class AutoDTap extends Module {
         return true;
     }
 
-    private BlockPos findBestBase(PlayerEntity target) {
-        BlockPos feet = target.getBlockPos();
+    private BlockPos findBestBase(Player target) {
+        BlockPos feet = target.blockPosition();
         int r = (int) Math.ceil(searchRadius.get());
 
         BlockPos best = null;
         double bestDamage = minDamage.get();
 
-        BlockPos.Mutable pos = new BlockPos.Mutable();
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         for (int dx = -r; dx <= r; dx++) {
             for (int dz = -r; dz <= r; dz++) {
                 for (int dy = -3; dy <= 1; dy++) {
@@ -315,10 +315,10 @@ public class AutoDTap extends Module {
 
                     if (!CombatUtils.isCrystalBase(pos)) continue;
 
-                    BlockPos above = pos.up();
-                    if (!mc.world.getBlockState(above).isAir()) continue;
+                    BlockPos above = pos.above();
+                    if (!mc.level.getBlockState(above).isAir()) continue;
 
-                    Vec3d crystalTop = new Vec3d(pos.getX() + 0.5, pos.getY() + 1.0, pos.getZ() + 0.5);
+                    Vec3 crystalTop = new Vec3(pos.getX() + 0.5, pos.getY() + 1.0, pos.getZ() + 0.5);
                     if (!PlayerUtils.isWithinReach(crystalTop)) continue;
                     if (isCrystalAt(above)) continue;
 
@@ -328,7 +328,7 @@ public class AutoDTap extends Module {
 
                     if (damage > bestDamage) {
                         bestDamage = damage;
-                        best = pos.toImmutable();
+                        best = pos.immutable();
                     }
                 }
             }
@@ -338,21 +338,21 @@ public class AutoDTap extends Module {
     }
 
     private boolean isCrystalAt(BlockPos pos) {
-        for (Entity entity : mc.world.getEntities()) {
-            if (entity instanceof EndCrystalEntity && entity.getBlockPos().equals(pos)) return true;
+        for (Entity entity : mc.level.entitiesForRendering()) {
+            if (entity instanceof EndCrystal && entity.blockPosition().equals(pos)) return true;
         }
         return false;
     }
 
-    private boolean breakBestCrystal(PlayerEntity target) {
-        EndCrystalEntity best = null;
+    private boolean breakBestCrystal(Player target) {
+        EndCrystal best = null;
         double bestDistance = Double.MAX_VALUE;
 
-        for (Entity entity : mc.world.getEntities()) {
-            if (!(entity instanceof EndCrystalEntity crystal)) continue;
+        for (Entity entity : mc.level.entitiesForRendering()) {
+            if (!(entity instanceof EndCrystal crystal)) continue;
             if (!PlayerUtils.isWithinReach(crystal)) continue;
 
-            double distance = crystal.squaredDistanceTo(target);
+            double distance = crystal.distanceToSqr(target);
             if (distance < bestDistance) {
                 bestDistance = distance;
                 best = crystal;
@@ -361,10 +361,10 @@ public class AutoDTap extends Module {
 
         if (best == null) return false;
 
-        EndCrystalEntity finalBest = best;
-        Hand hand = InvUtils.findInHotbar(Items.END_CRYSTAL).getHand();
-        if (hand == null) hand = Hand.MAIN_HAND;
-        Hand finalHand = hand;
+        EndCrystal finalBest = best;
+        InteractionHand hand = InvUtils.findInHotbar(Items.END_CRYSTAL).getHand();
+        if (hand == null) hand = InteractionHand.MAIN_HAND;
+        InteractionHand finalHand = hand;
 
         if (rotate.get()) {
             Rotations.rotate(Rotations.getYaw(best), Rotations.getPitch(best), 35, () -> CombatUtils.attackEntity(finalBest, finalHand, swing.get()));

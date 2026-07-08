@@ -13,11 +13,11 @@ import meteordevelopment.meteorclient.utils.player.FindItemResult;
 import meteordevelopment.meteorclient.utils.player.InvUtils;
 import meteordevelopment.meteorclient.utils.player.Rotations;
 import meteordevelopment.orbit.EventHandler;
-import net.minecraft.item.Items;
-import net.minecraft.util.Hand;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * When ender pearls are present in the hotbar this module pearls the player into the deepest,
@@ -98,7 +98,7 @@ public class PearlAnchor extends Module {
 
     @EventHandler
     private void onTick(TickEvent.Pre event) {
-        if (mc.player == null || mc.world == null) return;
+        if (mc.player == null || mc.level == null) return;
 
         if (timer > 0) {
             timer--;
@@ -111,20 +111,20 @@ public class PearlAnchor extends Module {
         BlockPos hole = findDeepestHole();
         if (hole == null) return;
 
-        Vec3d aim = new Vec3d(hole.getX() + 0.5, hole.getY() + 0.1, hole.getZ() + 0.5);
+        Vec3 aim = new Vec3(hole.getX() + 0.5, hole.getY() + 0.1, hole.getZ() + 0.5);
         throwPearl(pearl, aim);
         timer = delay.get();
     }
 
     private BlockPos findDeepestHole() {
-        BlockPos feet = mc.player.getBlockPos();
+        BlockPos feet = mc.player.blockPosition();
         int r = (int) Math.ceil(radius.get());
 
         BlockPos best = null;
         int bestY = Integer.MAX_VALUE;
         double bestDistanceSq = Double.MAX_VALUE;
 
-        BlockPos.Mutable pos = new BlockPos.Mutable();
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         for (int dx = -r; dx <= r; dx++) {
             for (int dz = -r; dz <= r; dz++) {
                 double horizontalSq = dx * dx + dz * dz;
@@ -138,7 +138,7 @@ public class PearlAnchor extends Module {
                     if (pos.getY() < bestY || (pos.getY() == bestY && horizontalSq < bestDistanceSq)) {
                         bestY = pos.getY();
                         bestDistanceSq = horizontalSq;
-                        best = pos.toImmutable();
+                        best = pos.immutable();
                     }
                 }
             }
@@ -152,12 +152,12 @@ public class PearlAnchor extends Module {
      * enclosed by blast resistant blocks on all four horizontal sides.
      */
     private boolean isHoleFloor(BlockPos pos) {
-        if (!mc.world.getBlockState(pos).isAir()) return false;
-        if (!isResistant(pos.down())) return false;
+        if (!mc.level.getBlockState(pos).isAir()) return false;
+        if (!isResistant(pos.below())) return false;
 
         if (requireWalls.get()) {
-            for (Direction direction : Direction.Type.HORIZONTAL) {
-                if (!isResistant(pos.offset(direction))) return false;
+            for (Direction direction : Direction.Plane.HORIZONTAL) {
+                if (!isResistant(pos.relative(direction))) return false;
             }
         }
 
@@ -165,20 +165,20 @@ public class PearlAnchor extends Module {
     }
 
     private boolean isResistant(BlockPos pos) {
-        return mc.world.getBlockState(pos).getBlock().getBlastResistance() >= MIN_BLAST_RESISTANCE;
+        return mc.level.getBlockState(pos).getBlock().getExplosionResistance() >= MIN_BLAST_RESISTANCE;
     }
 
-    private void throwPearl(FindItemResult pearl, Vec3d aim) {
+    private void throwPearl(FindItemResult pearl, Vec3 aim) {
         Runnable action = () -> {
-            int prev = mc.player.getInventory().selectedSlot;
+            int prev = mc.player.getInventory().getSelectedSlot();
             boolean swapped = false;
 
-            Hand hand;
-            if (pearl.isOffhand()) hand = Hand.OFF_HAND;
+            InteractionHand hand;
+            if (pearl.isOffhand()) hand = InteractionHand.OFF_HAND;
             else {
                 InvUtils.swap(pearl.slot(), false);
                 swapped = true;
-                hand = Hand.MAIN_HAND;
+                hand = InteractionHand.MAIN_HAND;
             }
 
             CombatUtils.useItem(hand);

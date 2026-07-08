@@ -14,11 +14,11 @@ import meteordevelopment.meteorclient.utils.player.InvUtils;
 import meteordevelopment.meteorclient.utils.player.PlayerUtils;
 import meteordevelopment.orbit.EventHandler;
 import meteordevelopment.orbit.EventPriority;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityStatuses;
-import net.minecraft.entity.EquipmentSlot;
-import net.minecraft.item.Items;
-import net.minecraft.network.packet.s2c.play.EntityStatusS2CPacket;
+import net.minecraft.network.protocol.game.ClientboundEntityEventPacket;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityEvent;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.Items;
 
 /**
  * An improved Auto Totem. On top of the usual "keep a totem in your offhand" behaviour this module
@@ -104,7 +104,7 @@ public class BetterAutoTotem extends Module {
         }
         ticks = 0;
 
-        if (mc.player.getOffHandStack().isOf(Items.TOTEM_OF_UNDYING)) return;
+        if (mc.player.getOffhandItem().is(Items.TOTEM_OF_UNDYING)) return;
         if (!shouldHold()) return;
 
         InvUtils.move().from(totem.slot()).toOffhand();
@@ -116,16 +116,16 @@ public class BetterAutoTotem extends Module {
         float effectiveHealth = PlayerUtils.getTotalHealth() - PlayerUtils.possibleHealthReductions(predictExplosion.get(), predictFall.get());
         if (effectiveHealth <= health.get()) return true;
 
-        boolean gliding = mc.player.getEquippedStack(EquipmentSlot.CHEST).isOf(Items.ELYTRA) && mc.player.isGliding();
+        boolean gliding = mc.player.getItemBySlot(EquipmentSlot.CHEST).is(Items.ELYTRA) && mc.player.isFallFlying();
         return elytra.get() && gliding;
     }
 
     @EventHandler(priority = EventPriority.HIGH)
     private void onPacket(PacketEvent.Receive event) {
-        if (!(event.packet instanceof EntityStatusS2CPacket packet)) return;
-        if (packet.getStatus() != EntityStatuses.USE_TOTEM_OF_UNDYING) return;
+        if (!(event.packet instanceof ClientboundEntityEventPacket packet)) return;
+        if (packet.getEventId() != EntityEvent.PROTECTED_FROM_DEATH) return;
 
-        Entity entity = packet.getEntity(mc.world);
+        Entity entity = packet.getEntity(mc.level);
         if (entity == null || !entity.equals(mc.player)) return;
 
         // A totem just popped: swap a new one in as soon as possible.

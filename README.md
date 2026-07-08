@@ -4,7 +4,7 @@ ToolPRO is a [Meteor Client](https://meteorclient.com/) addon focused on crystal
 It adds an automatic **D-Tap** combo, configurable **pearl** mechanics, a **Pearl Anchor** module and
 an improved **Auto Totem**.
 
-> **Version:** Minecraft `1.21.4` · Meteor Client `1.21.4-SNAPSHOT` · Java `21`
+> **Version:** Minecraft `26.1.2` · Meteor Client `26.1.2-SNAPSHOT` · Java `25`
 
 > ⚠️ **Fair play:** Automation like this is against the rules of most public servers and of
 > Minecraft's EULA in many contexts. Only use it where it is explicitly allowed (private servers,
@@ -14,8 +14,8 @@ an improved **Auto Totem**.
 
 ## Installation
 
-1. Install [Fabric Loader](https://fabricmc.net/use/installer/) for Minecraft `1.21.4`.
-2. Download Meteor Client for `1.21.4` from [meteorclient.com](https://meteorclient.com/) and place the jar
+1. Install [Fabric Loader](https://fabricmc.net/use/installer/) for Minecraft `26.1.2`.
+2. Download Meteor Client for `26.1.2` from [meteorclient.com](https://meteorclient.com/) and place the jar
    in your `.minecraft/mods` folder.
 3. Place `toolpro-1.0.0.jar` (see [Building](#building) or the release page) in the same
    `mods` folder, next to Meteor Client.
@@ -92,7 +92,7 @@ number of totems left next to the module name.
 
 ## Building
 
-Requires JDK 21.
+Requires JDK 25 (the Gradle wrapper uses Gradle 9.4.1).
 
 ```bash
 ./gradlew build
