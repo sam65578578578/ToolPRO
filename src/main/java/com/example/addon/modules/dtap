@@ -1,0 +1,65 @@
+package com.example.addon.modules;
+
+import meteordevelopment.meteorclient.events.world.TickEvent;
+import meteordevelopment.meteorclient.settings.*;
+import meteordevelopment.meteorclient.systems.modules.Module;
+import meteordevelopment.orbit.EventHandler;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.decoration.EndCrystalEntity;
+import net.minecraft.util.Hand;
+
+public class DTap extends Module {
+    public DTap() {
+        super("dtap", "Auto D-Tap crystals.");
+    }
+
+    private final SettingGroup sgDTap = settings.createGroup("D-Tap");
+
+    private final Setting<Double> range = sgDTap.add(new DoubleSetting.Builder()
+        .name("range")
+        .description("Attack range.")
+        .defaultValue(5.5)
+        .min(0)
+        .max(6)
+        .build());
+
+    private final Setting<Integer> delay = sgDTap.add(new IntSetting.Builder()
+        .name("d-tap-delay")
+        .description("Ticks between hits.")
+        .defaultValue(1)
+        .min(0)
+        .max(4)
+        .build());
+
+    private Entity target = null;
+    private int timer = 0;
+
+    @EventHandler
+    private void onTick(TickEvent.Post event) {
+        target = null;
+
+        for (Entity entity : mc.world.getEntities()) {
+            if (entity instanceof EndCrystalEntity && mc.player.distanceTo(entity) <= range.get()) {
+                target = entity;
+                break;
+            }
+        }
+
+        if (target == null) {
+            timer = 0;
+            return;
+        }
+
+        if (timer == 0) {
+            mc.interactionManager.attackEntity(mc.player, target);
+            mc.player.swingHand(Hand.MAIN_HAND);
+            timer = delay.get();
+        } else if (timer > 0) {
+            timer--;
+            if (timer == 0) {
+                mc.interactionManager.attackEntity(mc.player, target);
+                mc.player.swingHand(Hand.MAIN_HAND);
+            }
+        }
+    }
+}
